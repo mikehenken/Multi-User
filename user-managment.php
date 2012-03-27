@@ -2,7 +2,7 @@
 	/*
 	Plugin Name: Multi User
 	Description: Adds Multi-User Management Section'
-	Version: 1.4
+	Version: 1.5
 	Author: Mike Henken
 	Author URI: http://michaelhenken.com/
 	*/
@@ -13,7 +13,7 @@
 	// register plugin
 	register_plugin($thisfile, // ID of plugin, should be filename minus php
 	'Multi User',
-	'1.4',
+	'1.5',
 	'Mike Henken', // Author of plugin
 	'http://www.michaelhenken.com/', // Author URL
 	'Adds Multi-User Management - Edit all options for current users and manage permissions.', // Plugin Description
