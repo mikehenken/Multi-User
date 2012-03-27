@@ -705,7 +705,7 @@ class MultiUser
 	
 	public function mmCheckPermissions()
 	{
-		echo $this->mmUserFile('SETTINGS');
+		// echo $this->mmUserFile('SETTINGS'); // seems to be only for debug purposes!
 		//Find Current script and trim path
 		$current_file = $_SERVER["PHP_SELF"];
 		$current_file = basename(rtrim($current_file, '/'));
