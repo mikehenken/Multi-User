@@ -25,6 +25,9 @@ $i18n = array(
 'SAVED' => "Your changes have been saved.",
 'CREATED' => "Has Been Created.",
 'DELETESURE' => "Are You Sure You Want To Delete",
-'UPDATESURE' => "Are You Sure You Want To Update This Plugin?"
-
+'UPDATESURE' => "Are You Sure You Want To Update This Plugin?",
+'USERS_NAME' => "User's Name",
+'USER_BIO'   => "User's Bio",
+'USERS_NAME' => "User's Name",
+'USERS_NAME' => "User's Name"
 );

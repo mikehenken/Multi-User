@@ -2,7 +2,7 @@
 	/*
 	Plugin Name: Multi User
 	Description: Adds Multi-User Management Section'
-	Version: 1.4
+	Version: 1.7
 	Author: Mike Henken
 	Author URI: http://michaelhenken.com/
 	*/
@@ -17,7 +17,7 @@
 	// register plugin
 	register_plugin($thisfile, // ID of plugin, should be filename minus php
 	'Multi User',
-	'1.6',
+	'1.7',
 	'Mike Henken', // Author of plugin
 	'http://www.michaelhenken.com/', // Author URL
 //	'Adds Multi-User Management - Edit all options for current users and manage permissions.', // Plugin Description
@@ -32,6 +32,9 @@
 	//Make the multiuser_perm() function run before each admin page loads
 	add_action('header', 'mm_permissions');
 	add_action('settings-user', 'mm_gs_settings_pg');
+	add_action('settings-user-extras', 'settings_form_data');
+
+	define('MULTIUSERPLUGINFOLDER', GSPLUGINPATH.'user-managment/');
 
 class MultiUser 
 {
@@ -77,6 +80,8 @@ class MultiUser
 		if(get_cookie('GS_ADMIN_USERNAME') != "")
 		{
 			global $xml;
+			$userbio = $xml->addChild('USERSNAME', $_POST['users_name']);
+			$userbio = $xml->addChild('USERSBIO', $_POST['users_bio']);
 			$perm = $xml->addChild('PERMISSIONS');
 			$perm->addChild('PAGES', $this->mmUserFile('PAGES'));
 			$perm->addChild('FILES', $this->mmUserFile('FILES'));
@@ -120,13 +125,16 @@ class MultiUser
 		// create user xml file - This coding was mostly taken from the 'settings.php' page..
 		createBak($usrfile, GSUSERSPATH, GSBACKUSERSPATH);
 		if (file_exists(GSUSERSPATH . _id($NUSR).'.xml.reset')) { unlink(GSUSERSPATH . _id($NUSR).'.xml.reset'); }
-		$xml = new SimpleXMLElement('<item></item>');
+		$xml = new SimpleXMLExtended('<item></item>');
 		$xml->addChild('USR', $NUSR);
 		$xml->addChild('PWD', $NPASSWD);
 		$xml->addChild('EMAIL', $_POST['useremail']);
 		$xml->addChild('HTMLEDITOR', $_POST['usereditor']);
 		$xml->addChild('TIMEZONE', $_POST['ntimezone']);
 		$xml->addChild('LANG', $_POST['userlng']);
+		$xml->addChild('USERSNAME', $_POST['users_name']);
+			$userbio = $xml->addChild('USERSBIO');
+				$userbio->addCData($_POST['users_bio']);
 		$perm = $xml->addChild('PERMISSIONS');
 		$perm->addChild('PAGES', $_POST['Pages']);
 		$perm->addChild('FILES', $_POST['Files']);
@@ -178,13 +186,16 @@ class MultiUser
 		if (isset($_POST['usernamec'])) 
 		{
 			// Edit user xml file - This coding was mostly taken from the 'settings.php' page..
-			$xml = new SimpleXMLElement('<item></item>');
+			$xml = new SimpleXMLExtended('<item></item>');
 			$xml->addChild('USR', $NUSR);
 			$xml->addChild('PWD', $NPASSWD);
 			$xml->addChild('EMAIL', $_POST['useremail']);
 			$xml->addChild('HTMLEDITOR', $_POST['usereditor']);
 			$xml->addChild('TIMEZONE', $_POST['ntimezone']);
 			$xml->addChild('LANG', $_POST['userlng']);
+			$xml->addChild('USERSNAME', $_POST['users_name']);
+			$userbio = $xml->addChild('USERSBIO');
+				$userbio->addCData($_POST['users_bio']);
 			$perm = $xml->addChild('PERMISSIONS');
 			$perm->addChild('PAGES', $_POST['Pages']);
 			$perm->addChild('FILES', $_POST['Files']);
@@ -639,6 +650,31 @@ function mmManageUsersForm()
 		.edit-pointer {
 			cursor:pointer;
 		}
+		.cke_skin_getsimple {border: 1px solid 
+		#999;
+		-moz-border-radius: 4px 4px 0 0;
+		-khtml-border-radius: 4px 4px 0 0;
+		-webkit-border-radius: 4px 4px 0 0;
+		border-radius: 4px 4px 0 0;
+		overflow: hidden;
+		}
+		.cke_top {
+			border-bottom: 1px solid 
+			#999;
+			background: 
+			#EEE;
+			background: -moz-linear-gradient(top, 
+			#EEE, 
+			#E2E2E2);
+			background: -webkit-gradient(linear, left top, left bottom, from(
+			#EEE), to(
+			#E2E2E2));
+		}
+		.cke_toolbar {
+			margin: 2px 0 0px 2px;
+			background: 
+			transparent;
+		}
 	</style>
 	
 
@@ -801,15 +837,20 @@ function mmManageUsersForm()
 	<!-- Edit Username -->
 	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr" style="">
 	
-		<td style=""></td>
+		<td style="">
+			<label for="users_name"><?php i18n('user-managment/USERS_NAME'); ?></label>
+			<input class="text" id="users_name" name="users_name" type="text" value="<?php echo $xml->USERSNAME; ?>" />
+		</td>
 		
 		<!-- Edit Email -->
 		<td style="">
+			<br/>
 			<input class="text" id="useremail" name="useremail" type="text" value="<?php echo $xml->EMAIL; ?>" />
 		</td>
 
 		<!-- HTML Editor Permissions -->
 		<td  style="">
+			<br/>
 			<input name="usereditor" id="usereditor" type="checkbox" <?php echo $cchecked; ?> />
 		</td>
 		
@@ -886,7 +927,7 @@ function mmManageUsersForm()
 		<div class="perm_select"><label><?php i18n('user-managment/LAND'); ?>
 			<a class="hcurser" title="This is where you can set an alternate landing page the user will arrive at upon logging in">?</a></label>
 			<select name="Landing" id="userland" class="text">
-				<option value="$landingselected" selected="selected"><?php echo $landingselected; ?></option>
+				<option value="<?php echo $landingselected; ?>" selected="selected"><?php echo $landingselected; ?></option>
 				<?php echo $pages_dropdown; ?>
 				<option value="theme.php">Theme</option>
 				<option value="settings.php">Settings</option>
@@ -904,10 +945,14 @@ function mmManageUsersForm()
 		</div>
 
 		<div class="clear"></div>
-
+		<div style="padding-top:5px;padding-bottom:10px;">
+			<?php global $editor_id; $editor_id = (string) $xml->USR; ?>
+			<label><?php i18n('user-managment/USER_BIO'); ?></label>
+			<textarea name="users_bio" id="post-content<?php echo $editor_id; ?>"><?php echo $xml->USERSBIO; ?></textarea>
+			<?php include MULTIUSERPLUGINFOLDER."ckeditor.php"; ?>
+		</div>
 		</td>
 	</tr>
-
 	<!-- Submit Form -->
 	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr perm" style="">
 	<td>
@@ -1100,5 +1145,43 @@ function mm_gs_settings_pg()
 {
 	$mm_settings = new MultiUser;
 	$mm_settings->mmProcessSettings();
+}
+
+function settings_form_data()
+{
+	$MultiUser = new MultiUser;
+	?>
+		<div style="padding-top:5px;padding-bottom:20px;">
+			<label for="users_name"><?php i18n('user-managment/USERS_NAME'); ?></label>
+			<input class="text" id="users_name" name="users_name" type="text" value="<?php echo $MultiUser->mmUserFile('USERSNAME', true); ?>" />
+			<div style="clear:both;padding-top:10px;"></div>
+			<?php global $editor_id; $editor_id = (string) ''; ?>
+			<label><?php i18n('user-managment/USER_BIO'); ?></label>
+			<textarea name="users_bio" id="post-content"><?php echo $MultiUser->mmUserFile('USERSBIO', true); ?></textarea>
+			<?php include MULTIUSERPLUGINFOLDER."ckeditor.php"; ?>
+		</div>
+	<?php
+}
+
+$EDHEIGHT = defined('GSEDITORHEIGHT') ? GSEDITORHEIGHT . 'px' : '300px';
+$EDTOOL = defined('GSEDITORTOOL') ? GSEDITORTOOL : 'basic';
+$EDLANG = defined('GSEDITORLANG') ? GSEDITORLANG : i18n_r('CKEDITOR_LANG');
+$EDOPTIONS = defined('GSEDITOROPTIONS') && trim(GSEDITOROPTIONS) != '' ? ', ' . GSEDITOROPTIONS : '';
+
+if ($EDTOOL == 'advanced') 
+{
+	$TOOLBAR = "
+	['Bold', 'Italic', 'Underline', 'NumberedList', 'BulletedList', 'JustifyLeft','JustifyCenter','JustifyRight','JustifyBlock', 'Table', 'TextColor', 'BGColor', 'Link', 'Unlink', 'Image', 'RemoveFormat', 'Source'],
+	'/',
+	['Styles','Format','Font','FontSize']
+	";
+} 
+elseif ($EDTOOL == 'basic') 
+{
+	$TOOLBAR = "['Bold', 'Italic', 'Underline', 'NumberedList', 'BulletedList', 'JustifyLeft','JustifyCenter','JustifyRight','JustifyBlock', 'Link', 'Unlink', 'Image', 'RemoveFormat', 'Source']";
+} 
+else 
+{
+	$TOOLBAR = GSEDITORTOOL;
 }
 ?>
