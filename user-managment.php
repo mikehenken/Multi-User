@@ -2,7 +2,7 @@
 	/*
 	Plugin Name: Multi User
 	Description: Adds Multi-User Management Section'
-	Version: 1.5
+	Version: 1.4
 	Author: Mike Henken
 	Author URI: http://michaelhenken.com/
 	*/
@@ -10,20 +10,25 @@
 	// get correct id for plugin
 	$thisfile = basename(__FILE__, ".php");
 
+	# add in this plugin's language file
+	i18n_merge('user-managment') || i18n_merge('user-managment', 'en_US');
+
+
 	// register plugin
 	register_plugin($thisfile, // ID of plugin, should be filename minus php
 	'Multi User',
-	'1.5',
+	'1.4',
 	'Mike Henken', // Author of plugin
 	'http://www.michaelhenken.com/', // Author URL
-	'Adds Multi-User Management - Edit all options for current users and manage permissions.', // Plugin Description
+//	'Adds Multi-User Management - Edit all options for current users and manage permissions.', // Plugin Description
+	i18n_r('user-managment/PLUGIN_DESCRIPTION'),
 	'settings', // Page type of plugin
 	'mm_admin' // Function that displays content
 	);
 
 	// activate hooks //
 	//Add Sidebar Item In Settings Page
-	add_action('settings-sidebar', 'createSideMenu', array($thisfile, 'User Management'));
+	add_action('settings-sidebar', 'createSideMenu', array($thisfile, i18n_r('user-managment/SIDEBAR')));
 	//Make the multiuser_perm() function run before each admin page loads
 	add_action('header', 'mm_permissions');
 	add_action('settings-user', 'mm_gs_settings_pg');
@@ -93,14 +98,57 @@ class MultiUser
 		$success = unlink($thedelete);
 		if($success)
 		{
-			print "<div class=\"updated\" style=\"display: block;\">$deletename Has Been Successfully Deleted</div>";
+			print "<div class=\"updated\" style=\"display: block;\">$deletename ".  i18n_r('user-managment/DELETED') . "</div>";
 		}
 		else
 		{
-			print "<div class=\"updated\" style=\"display: block;\"><span style=\"color:red;font-weight:bold;\">ERROR!!</span> - Unable To Delete File, Please Check Error Log Or Turn On Debug Mode</div>";
+			print "<div class=\"updated\" style=\"display: block;\"><span style=\"color:red;font-weight:bold;\">" . i18n_r('user-managment/DELETEERROR') . "</span></div>";
 		}
-		$this->mmManageUsersForm();
+		mmManageUsersForm();
 	}	
+
+
+	public function mmAddUser()
+	{
+		//Set User File, Username, And Password From Submission
+		$usrfile = strtolower($_POST['usernamec']);
+		$usrfile	= $usrfile . '.xml';
+		$NUSR = strtolower($_POST['usernamec']);
+		$pwd1       = $_POST['userpassword'];
+		$NPASSWD = passhash($pwd1);
+
+		// create user xml file - This coding was mostly taken from the 'settings.php' page..
+		createBak($usrfile, GSUSERSPATH, GSBACKUSERSPATH);
+		if (file_exists(GSUSERSPATH . _id($NUSR).'.xml.reset')) { unlink(GSUSERSPATH . _id($NUSR).'.xml.reset'); }
+		$xml = new SimpleXMLElement('<item></item>');
+		$xml->addChild('USR', $NUSR);
+		$xml->addChild('PWD', $NPASSWD);
+		$xml->addChild('EMAIL', $_POST['useremail']);
+		$xml->addChild('HTMLEDITOR', $_POST['usereditor']);
+		$xml->addChild('TIMEZONE', $_POST['ntimezone']);
+		$xml->addChild('LANG', $_POST['userlng']);
+		$perm = $xml->addChild('PERMISSIONS');
+		$perm->addChild('PAGES', $_POST['Pages']);
+		$perm->addChild('FILES', $_POST['Files']);
+		$perm->addChild('THEME', $_POST['Theme']);
+		$perm->addChild('PLUGINS', $_POST['Plugins']);
+		$perm->addChild('BACKUPS', $_POST['Backups']);
+		$perm->addChild('SETTINGS', $_POST['Settings']);
+		$perm->addChild('SUPPORT', $_POST['Support']);
+		$perm->addChild('EDIT', $_POST['Edit']);
+		$perm->addChild('LANDING', $_POST['Landing']);
+		$perm->addChild('ADMIN', $_POST['Admin']);
+		if (! XMLsave($xml, GSUSERSPATH . $usrfile) ) {
+		$error = i18n_r('CHMOD_ERROR');
+		}
+		// Redirect after script is completed... I will make the script submit via ajax later
+			else 
+			{
+				print '<div class="updated" style="display: block;">'.$NUSR.' '. i18n_r('user-managment/CREATED') . '</div>';
+			}
+		//Show Manage Form
+		mmManageUsersForm();
+	}
 	
 	public function mmProcessEditUser()
 	{
@@ -150,562 +198,22 @@ class MultiUser
 			$perm->addChild('ADMIN', $_POST['Admin']);
 			if (!XMLsave($xml, GSUSERSPATH . $usrfile)) 
 			{
-				$error = "Did Not Save File - ERROR!";
+				$error = i18n_r('user-managment/SAVEERROR');
 				echo $error;
 			}
 			
 			// Redirect after script is completed... I will make the script submit via ajax later
 			else 
 			{
-			  print '<div class="updated" style="display: block;">Your changes have been saved.</div>';
+			  print '<div class="updated" style="display: block;">'.i18n_r('user-managment/SAVED').'</div>';
 			}
-			$this->mmManageUsersForm();
+			mmManageUsersForm();
 		}
-	}
-	public function mmAddUser()
-	{
-		//Set User File, Username, And Password From Submission
-		$usrfile = strtolower($_POST['usernamec']);
-		$usrfile	= $usrfile . '.xml';
-		$NUSR = strtolower($_POST['usernamec']);
-		$pwd1       = $_POST['userpassword'];
-		$NPASSWD = passhash($pwd1);
-
-		// create user xml file - This coding was mostly taken from the 'settings.php' page..
-		createBak($usrfile, GSUSERSPATH, GSBACKUSERSPATH);
-		if (file_exists(GSUSERSPATH . _id($NUSR).'.xml.reset')) { unlink(GSUSERSPATH . _id($NUSR).'.xml.reset'); }
-		$xml = new SimpleXMLElement('<item></item>');
-		$xml->addChild('USR', $NUSR);
-		$xml->addChild('PWD', $NPASSWD);
-		$xml->addChild('EMAIL', $_POST['useremail']);
-		$xml->addChild('HTMLEDITOR', $_POST['usereditor']);
-		$xml->addChild('TIMEZONE', $_POST['ntimezone']);
-		$xml->addChild('LANG', $_POST['userlng']);
-		$perm = $xml->addChild('PERMISSIONS');
-		$perm->addChild('PAGES', $_POST['Pages']);
-		$perm->addChild('FILES', $_POST['Files']);
-		$perm->addChild('THEME', $_POST['Theme']);
-		$perm->addChild('PLUGINS', $_POST['Plugins']);
-		$perm->addChild('BACKUPS', $_POST['Backups']);
-		$perm->addChild('SETTINGS', $_POST['Settings']);
-		$perm->addChild('SUPPORT', $_POST['Support']);
-		$perm->addChild('EDIT', $_POST['Edit']);
-		$perm->addChild('LANDING', $_POST['Landing']);
-		$perm->addChild('ADMIN', $_POST['Admin']);
-		if (! XMLsave($xml, GSUSERSPATH . $usrfile) ) {
-		$error = i18n_r('CHMOD_ERROR');
-		}
-		// Redirect after script is completed... I will make the script submit via ajax later
-			else 
-			{
-				print '<div class="updated" style="display: block;">'.$NUSR.' Has Been Created.</div>';
-			}
-		//Show Manage Form
-		$this->mmManageUsersForm();
-	}
-	
-	public function mmManageUsersForm()
-	{
-		# get all available language files
-      $lang_handle = opendir(GSLANGPATH) or die("Unable to open ". GSLANGPATH);
-      while ($lfile = readdir($lang_handle)) {
-      	if( is_file(GSLANGPATH . $lfile) && $lfile != "." && $lfile != ".." )	{
-      		$lang_array[] = basename($lfile, ".php");
-      	}
-      }
-      if (count($lang_array) != 0) {
-      	sort($lang_array);
-      	$count = '0'; $sel = ''; $langs = '';
-      	foreach ($lang_array as $larray){
-      		$langs .= '<option value="'.$larray.'" >'.$larray.'</option>';
-      		$count++;
-      	}
-      }
-
-     //Get Available Timezones
-      ob_start(); include ("../admin/inc/timezone_options.txt");$Timezone_Include = ob_get_contents();ob_end_clean();
-
-		//Styles For Form
-	?>
-		<style>
-			.text {
-				width:160px !important;
-			}
-			.user_tr_header {
-				border:0px;border-bottom:0px;border-bottom-width:0px;
-			}
-			.user_tr {
-				border:0px;border-bottom:0px;border-bottom-width:0px;background:#F7F7F7;
-			}
-			.user_tr td{
-				border:0px;border-bottom:0px;border-bottom-width:0px;background:#F7F7F7;
-			}
-			.user_sub_tr {
-				border:0px;border-bottom:0px !important; border-bottom-width:0px !important;border-top:0px;border-top-width:0px !important;display:none
-			}
-			.user_sub_tr h3{
-				font-size:14px; padding:0px;margin:0px;
-			}
-			.user_sub_tr td{
-				border:0px;border-bottom:0px !important;border-bottom-width:0px !important;padding-top:6px !important; border-top: 0px !important;
-			}
-			.hiduser {
-				display:none;
-			}
-			.user_sub_tr select{
-				width:160px;
-			}
-			.perm label {
-				clear:left
-			}
-			.perm_div {
-				width:70px;height:40px;float:left;margin-left:4px;
-			}
-			.leftsec {
-				width:180px;float:left;
-			}
-			.rightsec {
-				width:180px;
-			}
-			.perm_select {
-				width:220px;float:left;
-			}
-			.perm_div_2 {
-				width:auto;float:left;padding-top:6px;
-			}
-			.acurser {
-				cursor:pointer;text-decoration:underline;color:#D94136;position:absolute;margin-left:0px;
-			}
-			.hcurser {
-				cursor:pointer;text-decoration:underline;color:#D94136;
-			}
-			.edit-pointer {
-				cursor:pointer;
-			}
-		</style>
-		
-
-      <!-- Below is the 'Table Headers' For The user data -->
-		<h3 class="floated">User Management</h3>
-		<div class="edit-nav clearfix">
-			<p>
-				<a href="#" id="add-user">Add New User</a>
-			</p>
-			<p>
-				<a href="load.php?id=user-managment&download_id=133" ONCLICK="decision('Are You Sure You Want To Update This Plugin?')">Update This Plugin</a>
-			</p>
-		</div>
-		
-		<table class="user_table">
-		<tr>
-			<th>Username:</th>
-			<th>Email:</th>
-			<th>HTML Editor:</th>
-			<th>Edit</th>
-		</tr>
-
-<?php
-      // Open Users Directory And Put Filenames Into Array
-      $dir = "./../data/users/*.xml";
-
-      // Make Edit Form For Each User XML File Found
-      foreach (glob($dir) as $file) {
-          $xml = simplexml_load_file($file) or die("Unable to load XML file!");
-
-
-      // PERMISSIONS CHECKBOXES - Checks XML File To Find Existing Permissions Settings //
-
-		// Pages
-		if ($xml->PERMISSIONS->PAGES != "")
-		{
-			$pageschecked = "checked";
-			$pages_dropdown = "";
-		}
-		else 
-		{
-			$pageschecked = "";
-			$pages_dropdown = "<option value=\"pages.php\">Pages</option>";
-		}
-
-		//Files - uploads.php
-		if ($xml->PERMISSIONS->FILES != "") 
-		{
-			$fileschecked = "checked";
-		}
-		else {$fileschecked = "";}
-
-		//Theme
-		if ($xml->PERMISSIONS->THEME != "") 
-		{
-			$themechecked = "checked";
-		}
-		else {$themechecked = "";}
-
-		//Plugins
-		if ($xml->PERMISSIONS->PLUGINS != "") 
-		{
-			$pluginschecked = "checked";
-		}
-		else {$pluginschecked = "";}
-
-		//Backuops
-		if ($xml->PERMISSIONS->BACKUPS != "") 
-		{
-			$backupschecked = "checked";
-		}
-		else {$backupschecked = "";}
-
-		//Settings
-		if ($xml->PERMISSIONS->SETTINGS != "") 
-		{
-			$settingschecked = "checked";
-		}
-		else {$settingschecked = "";}
-
-
-		//Support
-		if ($xml->PERMISSIONS->SUPPORT != "") 
-		{
-			$supportchecked = "checked";
-		}
-		else {$supportchecked = "";}
-
-		//Admin
-		if ($xml->PERMISSIONS->ADMIN != "") 
-		{
-			$adminchecked = "checked";
-		}
-		else {$adminchecked = "";}
-
-		//Landing Page
-		if ($xml->PERMISSIONS->LANDING != "pages.php") 
-		{
-			$landingselected = $xml->PERMISSIONS->LANDING;
-		}
-		else {$landingselected = "pages.php";}
-
-		//Edit
-		if ($xml->PERMISSIONS->EDIT != "") 
-		{
-			$editchecked = "checked";
-		}
-		else {$editchecked = "";}
-		
-		//Html Editor
-		if ($xml->HTMLEDITOR == "") 
-		{
-			$htmledit = "No";
-		} 
-		else 
-		{
-			$htmledit = "Yes";
-		}
-
-		if ($htmledit == "No") 
-		{
-		  $cchecked = "";
-		} 
-		elseif ($htmledit == "Yes") 
-		{
-		  $cchecked = "checked";
-		}
-
-		//Below is the User Data
-
-?>
-       
-		<script language="javascript">
-			function decision(message, url){
-				if(confirm(message)) location.href = url;
-			}
-		</script>
-		 
-		   
-		<tr class="user_tr">
-			<td>
-				&nbsp;<?php echo $xml->USR; ?>
-			</td>
-			<td>
-				&nbsp;<?php echo $xml->EMAIL; ?>
-			</td>
-			<td>
-				&nbsp;<?php echo $htmledit; ?>
-			</td>
-
-			<!-- Edit Button (Expanded By Jquery Script) -->
-			<td>
-				<a style="" class="edit-pointer edit-user<?php echo $xml->USR; ?> acurser">Edit</a><a style="" class="hide-user<?php echo $xml->USR; ?> acurser hiduser">Hide</a>
-			</td>
-		</tr>
-
-		<!-- Begin 'Edit User' Form -->
-		<form method="post" action="load.php?id=user-managment">
-		
-		<!-- Edit Username -->
-		<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr" style="">
-		
-			<td style=""></td>
-			
-			<!-- Edit Email -->
-			<td style="">
-				<input class="text" id="useremail" name="useremail" type="text" value="<?php echo $xml->EMAIL; ?>" />
-			</td>
-
-			<!-- HTML Editor Permissions -->
-			<td  style="">
-				<input name="usereditor" id="usereditor" type="checkbox" <?php echo $cchecked; ?> />
-			</td>
-			
-		<!-- Change Password -->
-		</tr>
-		<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr" style="">
-
-			<td style="">
-				<label for="userpassword">Password:</label>
-				<input autocomplete="off" class="text" id="userpassword" name="userpassword" type="password" value="" />
-			</td>
-
-
-			<!-- Change Language -->
-			<td>
-				<label for="userlng">Language:</label>
-				<select name="userlng" id="userlng" class="text">
-					<option value="<?php echo $xml->LANG; ?>"selected="selected"><?php echo $xml->LANG; ?></option>
-					<?php echo $langs; ?>
-				</select>
-			</td>
-
-			<!-- Change Timezone -->
-			<td>
-				<label for="ntimezone">Timezone:</label>
-				<select class="text" id="ntimezone" name="ntimezone">
-					<option value="<?php echo $xml->TIMEZONE; ?>"  selected="selected"><?php echo $xml->TIMEZONE; ?></option>
-					<?php echo $Timezone_Include; ?>
-				</select>
-			</td>
-		</tr>
-         
-		<!-- Permissions Checkboxes -->
-		<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr perm" style="">
-			<td colspan="4" height="16">
-				<h3 style="">Permissions (<strong>Check Areas</strong> You Would Like <strong>To Block</strong> Access To)</h3>
-			</td>
-		</tr>
-					
-		<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr" style="">
-			<td colspan="4">
-			<div class="perm_div"><label>Pages</label>
-				<input type="checkbox" name="Pages" value="no" <?php echo $pageschecked; ?> />
-			</div>
-
-			<div class="perm_div"><label>Files</label>
-				<input type="checkbox" name="Files" value="no" <?php echo $fileschecked; ?> />
-			</div>
-
-			<div class="perm_div"><label>Theme</label>
-				<input type="checkbox" name="Theme" value="no" <?php echo $themechecked; ?> />
-			</div>
-
-			<div class="perm_div"><label>Plugins</label>
-				<input type="checkbox" name="Plugins" value="no" <?php echo $pluginschecked; ?> />
-			</div>
-
-			<div class="perm_div"><label>Backups</label>
-				<input type="checkbox" name="Backups" value="no" <?php echo $backupschecked; ?> />
-			</div>
-
-			<div class="perm_div"><label>Settings</label>
-				<input type="checkbox" name="Settings" value="no" <?php echo $settingschecked; ?> />
-			</div>
-
-			<div class="perm_div"><label>Support</label>
-				<input type="checkbox" name="Support" value="no" <?php echo $supportchecked; ?> />
-			</div>
-
-			<div class="perm_div"><label>Edit</label>
-				<input type="checkbox" name="Edit" value="no" <?php echo $editchecked; ?> />
-			</div>
-
-			<div class="perm_select"><label>Custom Landing Page (Optional)
-				<a class="hcurser" title="This is where you can set an alternate landing page the user will arrive at upon logging in">?</a></label>
-				<select name="Landing" id="userland" class="text">
-					<option value="$landingselected" selected="selected"><?php echo $landingselected; ?></option>
-					<?php echo $pages_dropdown; ?>
-					<option value="theme.php">Theme</option>
-					<option value="settings.php">Settings</option>
-					<option value="support.php">Support</option>
-					<option value="edit.php">Edit</option>
-					<option value="plugins.php">Plugins</option>
-					<option value="upload.php">Upload</option>
-					<option value="backups.php">Backups</option>
-				</select>
-			</div>
-
-			<div class="perm_div_2">
-				<label>Disable Admin Access (Cannot Manage Users)</label>
-				<input type="checkbox" id="Admin" name="Admin" value="no" <?php echo $adminchecked; ?> />
-			</div>
-
-			<div class="clear"></div>
-
-			</td>
-		</tr>
-
-		<!-- Submit Form -->
-		<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr perm" style="">
-		<td>
-			<input class="submit" type="submit" name="edit-user" value="Save Changes"/>
-			&nbsp;&nbsp;&nbsp;<a class="hcurser" ONCLICK="decision('Are You Sure You Want To Delete <?php echo $xml->USR; ?>','load.php?id=user-managment&deletefile=<?php echo $xml->USR; ?>')">Delete User</a>
-		</td>
-		</tr>
-		</div>
-		<input type="hidden" name="nano" value="<?php echo $xml->PWD; ?>"/><input type="hidden" name="usernamec" value="<?php echo $xml->USR; ?>"/>
-		</form>
-     
-
-    
-<?php
- }
- echo "</table>";
- echo '<script type="text/javascript">';
-      //For Each User XML Filed, Print jQuery To Show/Hide The 'Edit User' And 'Add User' Sections
-      foreach (glob($dir) as $file) {
-          $xml = simplexml_load_file($file) or die("Unable to load XML file!");
-		  ?>
-		  
-          $(".edit-user<?php echo $xml->USR; ?>").click(function () {
-			  $(".edit-user<?php echo $xml->USR; ?>").slideUp();         
-			  $(".hide-user<?php echo $xml->USR; ?>").slideDown();        
-			  $(".hide-div<?php echo $xml->USR; ?>").css('display','table-row');  
-          });         
-          $(".hide-user<?php echo $xml->USR; ?>").click(function () {         
-			  $(".edit-user<?php echo $xml->USR; ?>").slideDown();          
-			  $(".hide-user<?php echo $xml->USR; ?>").slideUp();         
-			  $(".hide-div<?php echo $xml->USR; ?>").css('display','none');         
-          });
-          $("hideagain").click(function () {         
-			  $(".edit-user<?php echo $xml->USR; ?>").slideUp();        
-			  $(".hide-div<?php echo $xml->USR; ?>").css('display','none');    
-          });
-          $("#add-user").click(function () {       
-			  $("#add-user").slideUp();       
-			  $(".hide-div").slideDown();          
-          });
-	  <?php
-      }
-      echo "</script>";
-
-                             // ADD USER FORM //
-?>
-    
- <!-- Below is the html form to add a new user.. It is proccesed with 'readxml.php' -->
-      <div id="profile" class="hide-div section" style="display:none;margin-top:0px;">
-      <form method="post" action="load.php?id=user-managment">
-    <h3>Add New User</h3>
-    <div class="leftsec">
-      <p><label for="usernamec" >Username:</label><input class="text" id="usernamec" name="usernamec" type="text" value="" /></p>
-    </div>
-    <div class="rightsec">
-      <p><label for="useremail" >Email :</label><input class="text" id="useremail" name="useremail" type="text" value="" /></p>
-    </div>
-    <div class="leftsec">
-      <p><label for="ntimezone" >Timezone:</label>
-      <select class="text" id="ntimezone" name="ntimezone">
-      <option value="<?php echo $this->mmUserFile('TIMEZONE', true); ?>"  selected="selected"><?php echo $xml->TIMEZONE; ?></option>
-          <?php echo $Timezone_Include; ?>
-								</select>
-      </select>
-      </p>
-    </div>
-    <div class="rightsec">
-      <p><label for="userlng" >Language:</label>
-      <select name="userlng" id="userlng" class="text">
-			<option value="en_US"selected="selected">English (en_US)</option>
-           <?php echo $langs ?>
-      </select>
-      </p>
-    </div>
-     <div class="leftsec">
-      <p><label for="userpassword" >Password:</label><input autocomplete="off" class="text" id="userpassword" name="userpassword" type="password" value="" /></p>
-    </div>
-     <div class="leftsec">
-       <p class="inline" style="padding-top:24px;"><input name="usereditor" id="usereditor" type="checkbox" value="1" checked="checked" /> &nbsp;<label for="usereditor" >Enable the HTML editor</label></p>
-    </div>
-      <div class="clear"></div>
-      <h3 style="font-size:14px;">Permissions (<strong>Check Areas</strong> You Would Like <strong>To Block</strong> Access To)</h3>
-             <div class="perm_div"><label for="Pages">Pages</label>
-                             <input type="checkbox" id="Pages" name="Pages" value="no" />
-                             </div>
-
-                             <div class="perm_div"><label for="Files">Files</label>
-                             <input type="checkbox" id="Files" name="Files" value="no" />
-                             </div>
-
-                             <div class="perm_div"><label for="Theme">Theme</label>
-                             <input type="checkbox" id="Theme" name="Theme" value="no" />
-                             </div>
-
-                             <div class="perm_div"><label for="Plugins">Plugins</label>
-                             <input type="checkbox" id="Plugins" name="Plugins" value="no" />
-                             </div>
-
-                             <div class="perm_div"><label for="Backups">Backups</label>
-                             <input type="checkbox" id="Backups" name="Backups" value="no" />
-                             </div>
-
-                             <div class="perm_div"><label for="Settings">Settings</label>
-                             <input type="checkbox" id="Settings" name="Settings" value="no" />
-                             </div>
-
-                             <div class="perm_div"><label for="Support">Support</label>
-                             <input type="checkbox" id="Support" name="Support" value="no" />
-                             </div>
-
-                             <div class="perm_div"><label for="Edit">Edit</label>
-                             <input type="checkbox" id="Edit" name="Edit" value="no" />
-                             </div>
-                             <div style="clear:both"></div>
-
-                             <div class="perm_select"><label for="userland">Custom Landing Page (Optional)
-                             <a href="#" title="This is where you can set an alternate landing page the user will arrive at upon logging in">?</a></label>
-                             <select name="Landing" id="userland" class="text">
-                              <option value="" selected="selected"></option>
-						      <option value="pages.php">Pages</option>
-                              <option value="theme.php">Theme</option>
-                              <option value="settings.php">Settings</option>
-                              <option value="support.php">Support</option>
-                              <option value="edit.php">Edit</option>
-                              <option value="plugins.php">Plugins</option>
-                              <option value="upload.php">Upload</option>
-                              <option value="backups.php">Backups</option>
-						      </select>
-                             </div>
-
-                             <div class="perm_div_2"><label for="Admin">Disable Admin Access (Cannot Manage Users)</label>
-                             <input type="checkbox" id="Admin" name="Admin" value="no" />
-                             </div>
-
-                             <div class="clear"></div>
-
-
-
-    <div class="rightsec">
-      <p></p>
-    </div>
-    <div class="clear"></div>
-
-    <p id="submit_line" >
-      <span><input class="submit" type="submit" name="add-user" value="Add New User" /></span> 
-	  &nbsp;&nbsp;<?php i18n('OR'); ?>&nbsp;&nbsp; <a class="cancel" href="settings.php?cancel"><?php i18n('CANCEL'); ?></a>
-    </p></form>
-    </div>
-	
-	<?php
 	}
 	
 	public function mmCheckPermissions()
 	{
-		// echo $this->mmUserFile('SETTINGS'); // seems to be only for debug purposes!
+		//echo $this->mmUserFile('SETTINGS'); //only for debug purposes
 		//Find Current script and trim path
 		$current_file = $_SERVER["PHP_SELF"];
 		$current_file = basename(rtrim($current_file, '/'));
@@ -1034,7 +542,7 @@ class MultiUser
 					else{
 					  print "<div class=\"updated\">Error: DAMN! The Script Could Not Extract And CHMOD The Archive</div>";
 					}
-			$this->mmManageUsersForm();
+			mmManageUsersForm();
 	}
 						
 				public function DownloadPlugins($id, $get_field)
@@ -1051,46 +559,546 @@ class MultiUser
             return $get_field_data;
         }
 }
+	
+function mmManageUsersForm()
+{
+	$MultiUser = new MultiUser;
+	# get all available language files
+  $lang_handle = opendir(GSLANGPATH) or die("Unable to open ". GSLANGPATH);
+  while ($lfile = readdir($lang_handle)) {
+  	if( is_file(GSLANGPATH . $lfile) && $lfile != "." && $lfile != ".." )	{
+  		$lang_array[] = basename($lfile, ".php");
+  	}
+  }
+  if (count($lang_array) != 0) {
+  	sort($lang_array);
+  	$count = '0'; $sel = ''; $langs = '';
+  	foreach ($lang_array as $larray){
+  		$langs .= '<option value="'.$larray.'" >'.$larray.'</option>';
+  		$count++;
+  	}
+  }
 
-	function mm_admin()
+ //Get Available Timezones
+  ob_start(); include ("../admin/inc/timezone_options.txt");$Timezone_Include = ob_get_contents();ob_end_clean();
+
+	//Styles For Form
+?>
+	<style>
+		.text {
+			width:160px !important;
+		}
+		.user_tr_header {
+			border:0px;border-bottom:0px;border-bottom-width:0px;
+		}
+		.user_tr {
+			border:0px;border-bottom:0px;border-bottom-width:0px;background:#F7F7F7;
+		}
+		.user_tr td{
+			border:0px;border-bottom:0px;border-bottom-width:0px;background:#F7F7F7;
+		}
+		.user_sub_tr {
+			border:0px;border-bottom:0px !important; border-bottom-width:0px !important;border-top:0px;border-top-width:0px !important;display:none
+		}
+		.user_sub_tr h3{
+			font-size:14px; padding:0px;margin:0px;
+		}
+		.user_sub_tr td{
+			border:0px;border-bottom:0px !important;border-bottom-width:0px !important;padding-top:6px !important; border-top: 0px !important;
+		}
+		.hiduser {
+			display:none;
+		}
+		.user_sub_tr select{
+			width:160px;
+		}
+		.perm label {
+			clear:left
+		}
+		.perm_div {
+			width:70px;height:40px;float:left;margin-left:4px;
+		}
+		.leftsec {
+			width:180px;float:left;
+		}
+		.rightsec {
+			width:180px;
+		}
+		.perm_select {
+			width:220px;float:left;
+		}
+		.perm_div_2 {
+			width:auto;float:left;padding-top:6px;
+		}
+		.acurser {
+			cursor:pointer;text-decoration:underline;color:#D94136;position:absolute;margin-left:0px;
+		}
+		.hcurser {
+			cursor:pointer;text-decoration:underline;color:#D94136;
+		}
+		.edit-pointer {
+			cursor:pointer;
+		}
+	</style>
+	
+
+  <!-- Below is the 'Table Headers' For The user data -->
+	<h3 class="floated"><?php i18n('user-managment/TITLE'); ?></h3>
+	<div class="edit-nav clearfix">
+		<p>
+			<a href="#" id="add-user"><?php i18n('user-managment/ADDUSER'); ?></a>
+		</p>
+		<p>
+			<a href="#" ONCLICK="decision('<?php i18n('user-managment/UPDATESURE'); ?>', 'load.php?id=user-managment&download_id=133')"><?php i18n('user-managment/UPDATE'); ?></a>
+		</p>
+	</div>
+	
+	<table class="user_table">
+	<tr>
+		<th>Username:</th>
+		<th>Email:</th>
+		<th>HTML Editor:</th>
+		<th><?php i18n('user-managment/EDIT'); ?></th>
+	</tr>
+
+<?php
+  // Open Users Directory And Put Filenames Into Array
+  $dir = "./../data/users/*.xml";
+
+  // Make Edit Form For Each User XML File Found
+  foreach (glob($dir) as $file) {
+      $xml = simplexml_load_file($file) or die("Unable to load XML file!");
+
+
+  // PERMISSIONS CHECKBOXES - Checks XML File To Find Existing Permissions Settings //
+
+	// Pages
+	if ($xml->PERMISSIONS->PAGES != "")
 	{
-		$mm_admin = new MultiUser;
-		
-		if(!isset($_POST['usernamec'])  && !isset($_GET['deletefile']) && !isset($_POST['add-user']) && !isset($_GET['download_id']))
-		{
-			$mm_admin->mmManageUsersForm();
+		$pageschecked = "checked";
+		$pages_dropdown = "";
+	}
+	else 
+	{
+		$pageschecked = "";
+		$pages_dropdown = "<option value=\"pages.php\">Pages</option>";
+	}
+
+	//Files - uploads.php
+	if ($xml->PERMISSIONS->FILES != "") 
+	{
+		$fileschecked = "checked";
+	}
+	else {$fileschecked = "";}
+
+	//Theme
+	if ($xml->PERMISSIONS->THEME != "") 
+	{
+		$themechecked = "checked";
+	}
+	else {$themechecked = "";}
+
+	//Plugins
+	if ($xml->PERMISSIONS->PLUGINS != "") 
+	{
+		$pluginschecked = "checked";
+	}
+	else {$pluginschecked = "";}
+
+	//Backuops
+	if ($xml->PERMISSIONS->BACKUPS != "") 
+	{
+		$backupschecked = "checked";
+	}
+	else {$backupschecked = "";}
+
+	//Settings
+	if ($xml->PERMISSIONS->SETTINGS != "") 
+	{
+		$settingschecked = "checked";
+	}
+	else {$settingschecked = "";}
+
+
+	//Support
+	if ($xml->PERMISSIONS->SUPPORT != "") 
+	{
+		$supportchecked = "checked";
+	}
+	else {$supportchecked = "";}
+
+	//Admin
+	if ($xml->PERMISSIONS->ADMIN != "") 
+	{
+		$adminchecked = "checked";
+	}
+	else {$adminchecked = "";}
+
+	//Landing Page
+	if ($xml->PERMISSIONS->LANDING != "pages.php") 
+	{
+		$landingselected = $xml->PERMISSIONS->LANDING;
+	}
+	else {$landingselected = "pages.php";}
+
+	//Edit
+	if ($xml->PERMISSIONS->EDIT != "") 
+	{
+		$editchecked = "checked";
+	}
+	else {$editchecked = "";}
+	
+	//Html Editor
+	if ($xml->HTMLEDITOR == "") 
+	{
+		$htmledit = "No";
+	} 
+	else 
+	{
+		$htmledit = "Yes";
+	}
+
+	if ($htmledit == "No") 
+	{
+	  $cchecked = "";
+	} 
+	elseif ($htmledit == "Yes") 
+	{
+	  $cchecked = "checked";
+	}
+
+	//Below is the User Data
+
+?>
+   
+	<script language="javascript">
+		function decision(message, url){
+			if(confirm(message)) location.href = url;
 		}
+	</script>
+	 
+	   
+	<tr class="user_tr">
+		<td>
+			&nbsp;<?php echo $xml->USR; ?>
+		</td>
+		<td>
+			&nbsp;<?php echo $xml->EMAIL; ?>
+		</td>
+		<td>
+			&nbsp;<?php echo $htmledit; ?>
+		</td>
+
+		<!-- Edit Button (Expanded By Jquery Script) -->
+		<td>
+			<a style="" class="edit-pointer edit-user<?php echo $xml->USR; ?> acurser"><?php i18n('user-managment/EDIT'); ?></a><a style="" class="hide-user<?php echo $xml->USR; ?> acurser hiduser"><?php i18n('user-managment/HIDE'); ?></a>
+		</td>
+	</tr>
+
+	<!-- Begin 'Edit User' Form -->
+	<form method="post" action="load.php?id=user-managment">
+	
+	<!-- Edit Username -->
+	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr" style="">
+	
+		<td style=""></td>
 		
-		if(isset($_POST['edit-user']))
-		{
-			$mm_admin->mmProcessEditUser();
-		}
+		<!-- Edit Email -->
+		<td style="">
+			<input class="text" id="useremail" name="useremail" type="text" value="<?php echo $xml->EMAIL; ?>" />
+		</td>
+
+		<!-- HTML Editor Permissions -->
+		<td  style="">
+			<input name="usereditor" id="usereditor" type="checkbox" <?php echo $cchecked; ?> />
+		</td>
 		
-		if(isset($_GET['deletefile']))
-		{
-			$mm_admin->mmDeleteUser();
-		}
-		
-		if(isset($_POST['add-user']))
-		{
-			$mm_admin->mmAddUser();
-		}
-		
-		if(isset($_GET['download_id']))
-		{
-			$mm_admin->DownloadPlugin($_GET['download_id']);
-		}
+	<!-- Change Password -->
+	</tr>
+	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr" style="">
+
+		<td style="">
+			<label for="userpassword">Password:</label>
+			<input autocomplete="off" class="text" id="userpassword" name="userpassword" type="password" value="" />
+		</td>
+
+
+		<!-- Change Language -->
+		<td>
+			<label for="userlng">Language:</label>
+			<select name="userlng" id="userlng" class="text">
+				<option value="<?php echo $xml->LANG; ?>"selected="selected"><?php echo $xml->LANG; ?></option>
+				<?php echo $langs; ?>
+			</select>
+		</td>
+
+		<!-- Change Timezone -->
+		<td>
+			<label for="ntimezone">Timezone:</label>
+			<select class="text" id="ntimezone" name="ntimezone">
+				<option value="<?php echo $xml->TIMEZONE; ?>"  selected="selected"><?php echo $xml->TIMEZONE; ?></option>
+				<?php echo $Timezone_Include; ?>
+			</select>
+		</td>
+	</tr>
+     
+	<!-- Permissions Checkboxes -->
+	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr perm" style="">
+		<td colspan="4" height="16">
+			<h3 style=""><?php i18n('user-managment/PERM') ?></h3>
+		</td>
+	</tr>
+				
+	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr" style="">
+		<td colspan="4">
+		<div class="perm_div"><label><?php i18n('user-managment/PAGES'); ?></label>
+			<input type="checkbox" name="Pages" value="no" <?php echo $pageschecked; ?> />
+		</div>
+
+		<div class="perm_div"><label><?php i18n('user-managment/FILES'); ?></label>
+			<input type="checkbox" name="Files" value="no" <?php echo $fileschecked; ?> />
+		</div>
+
+		<div class="perm_div"><label><?php i18n('user-managment/THEME'); ?></label>
+			<input type="checkbox" name="Theme" value="no" <?php echo $themechecked; ?> />
+		</div>
+
+		<div class="perm_div"><label><?php i18n('user-managment/PLUGINS'); ?></label>
+			<input type="checkbox" name="Plugins" value="no" <?php echo $pluginschecked; ?> />
+		</div>
+
+		<div class="perm_div"><label><?php i18n('user-managment/BACKUPS'); ?></label>
+			<input type="checkbox" name="Backups" value="no" <?php echo $backupschecked; ?> />
+		</div>
+
+		<div class="perm_div"><label><?php i18n('user-managment/SETTINGS'); ?></label>
+			<input type="checkbox" name="Settings" value="no" <?php echo $settingschecked; ?> />
+		</div>
+
+		<div class="perm_div"><label><?php i18n('user-managment/SUPPORT'); ?></label>
+			<input type="checkbox" name="Support" value="no" <?php echo $supportchecked; ?> />
+		</div>
+
+		<div class="perm_div"><label><?php i18n('user-managment/EDIT'); ?></label>
+			<input type="checkbox" name="Edit" value="no" <?php echo $editchecked; ?> />
+		</div>
+
+		<div class="perm_select"><label><?php i18n('user-managment/LAND'); ?>
+			<a class="hcurser" title="This is where you can set an alternate landing page the user will arrive at upon logging in">?</a></label>
+			<select name="Landing" id="userland" class="text">
+				<option value="$landingselected" selected="selected"><?php echo $landingselected; ?></option>
+				<?php echo $pages_dropdown; ?>
+				<option value="theme.php">Theme</option>
+				<option value="settings.php">Settings</option>
+				<option value="support.php">Support</option>
+				<option value="edit.php">Edit</option>
+				<option value="plugins.php">Plugins</option>
+				<option value="upload.php">Upload</option>
+				<option value="backups.php">Backups</option>
+			</select>
+		</div>
+
+		<div class="perm_div_2">
+			<label><?php i18n('user-managment/ADMIN'); ?></label>
+			<input type="checkbox" id="Admin" name="Admin" value="no" <?php echo $adminchecked; ?> />
+		</div>
+
+		<div class="clear"></div>
+
+		</td>
+	</tr>
+
+	<!-- Submit Form -->
+	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr perm" style="">
+	<td>
+		<input class="submit" type="submit" name="edit-user" value="<?php i18n('user-managment/SAVE'); ?>"/>
+		&nbsp;&nbsp;&nbsp;<a class="hcurser" ONCLICK="decision('<?php echo i18n_r('user-managment/DELETESURE'). ' '. $xml->USR . '?'; ?>','load.php?id=user-managment&deletefile=<?php echo $xml->USR; ?>')"><?php i18n('user-managment/DELETE'); ?></a>
+	</td>
+	</tr>
+	</div>
+	<input type="hidden" name="nano" value="<?php echo $xml->PWD; ?>"/><input type="hidden" name="usernamec" value="<?php echo $xml->USR; ?>"/>
+	</form>
+ 
+
+
+<?php
+}
+echo "</table>";
+echo '<script type="text/javascript">';
+  //For Each User XML Filed, Print jQuery To Show/Hide The 'Edit User' And 'Add User' Sections
+  foreach (glob($dir) as $file) {
+      $xml = simplexml_load_file($file) or die("Unable to load XML file!");
+	  ?>
+	  
+      $(".edit-user<?php echo $xml->USR; ?>").click(function () {
+		  $(".edit-user<?php echo $xml->USR; ?>").slideUp();         
+		  $(".hide-user<?php echo $xml->USR; ?>").slideDown();        
+		  $(".hide-div<?php echo $xml->USR; ?>").css('display','table-row');  
+      });         
+      $(".hide-user<?php echo $xml->USR; ?>").click(function () {         
+		  $(".edit-user<?php echo $xml->USR; ?>").slideDown();          
+		  $(".hide-user<?php echo $xml->USR; ?>").slideUp();         
+		  $(".hide-div<?php echo $xml->USR; ?>").css('display','none');         
+      });
+      $("hideagain").click(function () {         
+		  $(".edit-user<?php echo $xml->USR; ?>").slideUp();        
+		  $(".hide-div<?php echo $xml->USR; ?>").css('display','none');    
+      });
+      $("#add-user").click(function () {       
+		  $("#add-user").slideUp();       
+		  $(".hide-div").slideDown();          
+      });
+  <?php
+  }
+  echo "</script>";
+
+                         // ADD USER FORM //
+?>
+
+<!-- Below is the html form to add a new user.. It is proccesed with 'readxml.php' -->
+  <div id="profile" class="hide-div section" style="display:none;margin-top:0px;">
+  <form method="post" action="load.php?id=user-managment">
+<h3><?php i18n('user-managment/ADDUSER'); ?></h3>
+<div class="leftsec">
+  <p><label for="usernamec" >Username:</label><input class="text" id="usernamec" name="usernamec" type="text" value="" /></p>
+</div>
+<div class="rightsec">
+  <p><label for="useremail" >Email :</label><input class="text" id="useremail" name="useremail" type="text" value="" /></p>
+</div>
+<div class="leftsec">
+  <p><label for="ntimezone" >Timezone:</label>
+  <select class="text" id="ntimezone" name="ntimezone">
+  <option value="<?php echo $MultiUser->mmUserFile('TIMEZONE', true); ?>"  selected="selected"><?php echo $xml->TIMEZONE; ?></option>
+      <?php echo $Timezone_Include; ?>
+							</select>
+  </select>
+  </p>
+</div>
+<div class="rightsec">
+  <p><label for="userlng" >Language:</label>
+  <select name="userlng" id="userlng" class="text">
+		<option value="en_US"selected="selected">English (en_US)</option>
+       <?php echo $langs ?>
+  </select>
+  </p>
+</div>
+ <div class="leftsec">
+  <p><label for="userpassword" >Password:</label><input autocomplete="off" class="text" id="userpassword" name="userpassword" type="password" value="" /></p>
+</div>
+ <div class="leftsec">
+   <p class="inline" style="padding-top:24px;"><input name="usereditor" id="usereditor" type="checkbox" value="1" checked="checked" /> &nbsp;<label for="usereditor" >Enable the HTML editor</label></p>
+</div>
+  <div class="clear"></div>
+  <h3 style="font-size:14px;"><?php i18n('user-managment/PERM'); ?></h3>
+         <div class="perm_div"><label for="Pages"><?php i18n('user-managment/PAGES'); ?></label>
+                         <input type="checkbox" id="Pages" name="Pages" value="no" />
+                         </div>
+
+                         <div class="perm_div"><label for="Files"><?php i18n('user-managment/FILES'); ?></label>
+                         <input type="checkbox" id="Files" name="Files" value="no" />
+                         </div>
+
+                         <div class="perm_div"><label for="Theme"><?php i18n('user-managment/THEME'); ?></label>
+                         <input type="checkbox" id="Theme" name="Theme" value="no" />
+                         </div>
+
+                         <div class="perm_div"><label for="Plugins"><?php i18n('user-managment/PLUGINS'); ?></label>
+                         <input type="checkbox" id="Plugins" name="Plugins" value="no" />
+                         </div>
+
+                         <div class="perm_div"><label for="Backups"><?php i18n('user-managment/BACKUPS'); ?></label>
+                         <input type="checkbox" id="Backups" name="Backups" value="no" />
+                         </div>
+
+                         <div class="perm_div"><label for="Settings"><?php i18n('user-managment/SETTINGS'); ?></label>
+                         <input type="checkbox" id="Settings" name="Settings" value="no" />
+                         </div>
+
+                         <div class="perm_div"><label for="Support"><?php i18n('user-managment/SUPPORT'); ?></label>
+                         <input type="checkbox" id="Support" name="Support" value="no" />
+                         </div>
+
+                         <div class="perm_div"><label for="Edit"><?php i18n('user-managment/EDIT'); ?></label>
+                         <input type="checkbox" id="Edit" name="Edit" value="no" />
+                         </div>
+                         <div style="clear:both"></div>
+
+                         <div class="perm_select"><label for="userland"><?php i18n('user-managment/LAND'); ?>
+                         <a href="#" title="This is where you can set an alternate landing page the user will arrive at upon logging in">?</a></label>
+                         <select name="Landing" id="userland" class="text">
+                          <option value="" selected="selected"></option>
+					      <option value="pages.php">Pages</option>
+                          <option value="theme.php">Theme</option>
+                          <option value="settings.php">Settings</option>
+                          <option value="support.php">Support</option>
+                          <option value="edit.php">Edit</option>
+                          <option value="plugins.php">Plugins</option>
+                          <option value="upload.php">Upload</option>
+                          <option value="backups.php">Backups</option>
+					      </select>
+                         </div>
+
+                         <div class="perm_div_2"><label for="Admin"><?php i18n('user-managment/ADMIN'); ?></label>
+                         <input type="checkbox" id="Admin" name="Admin" value="no" />
+                         </div>
+
+                         <div class="clear"></div>
+
+
+
+<div class="rightsec">
+  <p></p>
+</div>
+<div class="clear"></div>
+
+<p id="submit_line" >
+  <span><input class="submit" type="submit" name="add-user" value="<?php i18n('user-managment/ADDUSER'); ?>" /></span> 
+  &nbsp;&nbsp;<?php i18n('OR'); ?>&nbsp;&nbsp; <a class="cancel" href="settings.php?cancel"><?php i18n('CANCEL'); ?></a>
+</p></form>
+</div>
+
+<?php
+}
+
+function mm_admin()
+{
+	$mm_admin = new MultiUser;
+	
+	if(!isset($_POST['usernamec'])  && !isset($_GET['deletefile']) && !isset($_POST['add-user']) && !isset($_GET['download_id']))
+	{
+		mmManageUsersForm();
 	}
 	
-	function mm_permissions()
+	if(isset($_POST['edit-user']))
 	{
-		$mm_admin = new MultiUser;
-		$mm_admin->mmCheckPermissions();
+		$mm_admin->mmProcessEditUser();
 	}
 	
-	function mm_gs_settings_pg()
+	if(isset($_GET['deletefile']))
 	{
-		$mm_settings = new MultiUser;
-		$mm_settings->mmProcessSettings();
+		$mm_admin->mmDeleteUser();
 	}
+	
+	if(isset($_POST['add-user']))
+	{
+		$mm_admin->mmAddUser();
+	}
+	
+	if(isset($_GET['download_id']))
+	{
+		$mm_admin->DownloadPlugin($_GET['download_id']);
+	}
+}
+
+function mm_permissions()
+{
+	$mm_admin = new MultiUser;
+	$mm_admin->mmCheckPermissions();
+}
+
+function mm_gs_settings_pg()
+{
+	$mm_settings = new MultiUser;
+	$mm_settings->mmProcessSettings();
+}
 ?>
