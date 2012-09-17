@@ -17,7 +17,7 @@
 	// register plugin
 	register_plugin($thisfile, // ID of plugin, should be filename minus php
 	'Multi User',
-	'1.7',
+	'1.8',
 	'Mike Henken', // Author of plugin
 	'http://www.michaelhenken.com/', // Author URL
 //	'Adds Multi-User Management - Edit all options for current users and manage permissions.', // Plugin Description
@@ -146,6 +146,7 @@ class MultiUser
 		$perm->addChild('EDIT', $_POST['Edit']);
 		$perm->addChild('LANDING', $_POST['Landing']);
 		$perm->addChild('ADMIN', $_POST['Admin']);
+		save_custom_permissions();
 		if (! XMLsave($xml, GSUSERSPATH . $usrfile) ) {
 		$error = i18n_r('CHMOD_ERROR');
 		}
@@ -157,31 +158,49 @@ class MultiUser
 		//Show Manage Form
 		mmManageUsersForm();
 	}
+
+	public function getUserPermission($user, $permission)
+	{
+		$userData = getXML(GSUSERSPATH.$user.'.xml');
+		if(is_object($userData->PERMISSIONS->$permission))
+		{
+			$permission_value = (string) $userData->PERMISSIONS->$permission;
+			if($permission_value == 'no')
+			{
+				return false;
+			}
+			else
+			{
+				return true;
+			}
+		}
+		else
+		{
+			return true;
+		}
+	}
 	
 	public function mmProcessEditUser()
 	{
-		// check if new password was provided
-		if (isset($_POST['userpassword'])) 
-		{
-			$pwd1 = $_POST['userpassword'];
-			if ($pwd1 != '') 
-			{
-				$NPASSWD = passhash($pwd1);
-			}
-			else 
-			{
-				$NPASSWD = $_POST['nano']; 
-			}
-		}
-
-		// GRAB DATA FROM FORM FORM
+		global $xml, $perm;
 		$NUSR = $_POST['usernamec'];
 		$usrfile = $_POST['usernamec'] . '.xml';
-		$NLANDING = $_POST['Landing'];
-		if($NLANDING == "pages.php") 
-		{
-			$NLANDING == "";
-		}
+		$NLANDING = (!isset($_POST['Landing']) || isset($_POST['Landing']) && $_POST['Landing'] == 'pages.php') ? '' : $_POST['Landing'];
+		$NPASSWD = (isset($_POST['userpassword']) && !empty($_POST['userpassword'])) ? passhash($_POST['userpassword']) : $_POST['nano'];
+		$email = (isset($_POST['useremail'])) ? $_POST['useremail'] : '';
+		$timezone = (isset($_POST['ntimezone'])) ? $_POST['ntimezone'] : '';
+		$lang = (isset($_POST['userlng'])) ? $_POST['userlng'] : '';
+		$usersname = (isset($_POST['users_name'])) ? $_POST['users_name'] : '';
+		$usersbio = (isset($_POST['users_bio'])) ? $_POST['users_bio'] : '';
+		$files = (isset($_POST['Files'])) ? $_POST['Files'] : '';
+		$pages = (isset($_POST['Pages'])) ? $_POST['Pages'] : '';
+		$theme = (isset($_POST['Theme'])) ? $_POST['Theme'] : '';
+		$plugins = (isset($_POST['Plugins'])) ? $_POST['Plugins'] : '';
+		$backups = (isset($_POST['Backups'])) ? $_POST['Backups'] : '';
+		$settings = (isset($_POST['Settings'])) ? $_POST['Settings'] : '';
+		$support = (isset($_POST['Support'])) ? $_POST['Support'] : '';
+		$edit = (isset($_POST['Edit'])) ? $_POST['Edit'] : '';
+		$admin = (isset($_POST['Admin'])) ? $_POST['Admin'] : '';
 
 		if (isset($_POST['usernamec'])) 
 		{
@@ -189,24 +208,25 @@ class MultiUser
 			$xml = new SimpleXMLExtended('<item></item>');
 			$xml->addChild('USR', $NUSR);
 			$xml->addChild('PWD', $NPASSWD);
-			$xml->addChild('EMAIL', $_POST['useremail']);
+			$xml->addChild('EMAIL', $email);
 			$xml->addChild('HTMLEDITOR', $_POST['usereditor']);
-			$xml->addChild('TIMEZONE', $_POST['ntimezone']);
-			$xml->addChild('LANG', $_POST['userlng']);
-			$xml->addChild('USERSNAME', $_POST['users_name']);
+			$xml->addChild('TIMEZONE', $timezone);
+			$xml->addChild('LANG', $lang);
+			$xml->addChild('USERSNAME', $usersname);
 			$userbio = $xml->addChild('USERSBIO');
-				$userbio->addCData($_POST['users_bio']);
+				$userbio->addCData($usersbio);
 			$perm = $xml->addChild('PERMISSIONS');
-			$perm->addChild('PAGES', $_POST['Pages']);
-			$perm->addChild('FILES', $_POST['Files']);
-			$perm->addChild('THEME', $_POST['Theme']);
-			$perm->addChild('PLUGINS', $_POST['Plugins']);
-			$perm->addChild('BACKUPS', $_POST['Backups']);
-			$perm->addChild('SETTINGS', $_POST['Settings']);
-			$perm->addChild('SUPPORT', $_POST['Support']);
-			$perm->addChild('EDIT', $_POST['Edit']);
+			$perm->addChild('PAGES', $pages);
+			$perm->addChild('FILES', $files);
+			$perm->addChild('THEME', $theme);
+			$perm->addChild('PLUGINS', $plugins);
+			$perm->addChild('BACKUPS', $backups);
+			$perm->addChild('SETTINGS', $settings);
+			$perm->addChild('SUPPORT', $support);
+			$perm->addChild('EDIT', $edit);
 			$perm->addChild('LANDING', $NLANDING);
-			$perm->addChild('ADMIN', $_POST['Admin']);
+			$perm->addChild('ADMIN', $admin);
+			save_custom_permissions();
 			if (!XMLsave($xml, GSUSERSPATH . $usrfile)) 
 			{
 				$error = i18n_r('user-managment/SAVEERROR');
@@ -629,6 +649,9 @@ function mmManageUsersForm()
 		.perm_div {
 			width:70px;height:40px;float:left;margin-left:4px;
 		}
+		.custom_perm_div {
+			width:155px;height:40px;float:left;margin-left:4px;
+		}
 		.leftsec {
 			width:180px;float:left;
 		}
@@ -699,7 +722,7 @@ function mmManageUsersForm()
 
 <?php
   // Open Users Directory And Put Filenames Into Array
-  $dir = "./../data/users/*.xml";
+  $dir = GSUSERSPATH."*.xml";
 
   // Make Edit Form For Each User XML File Found
   foreach (glob($dir) as $file) {
@@ -883,6 +906,16 @@ function mmManageUsersForm()
 		</td>
 	</tr>
      
+	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr" style="">
+		<td colspan="4" height="16">
+			<div style="padding-top:5px;padding-bottom:10px;">
+				<?php global $editor_id; $editor_id = (string) $xml->USR; ?>
+				<label><?php i18n('user-managment/USER_BIO'); ?></label>
+				<textarea name="users_bio" id="post-content<?php echo $editor_id; ?>"><?php echo $xml->USERSBIO; ?></textarea>
+				<?php include MULTIUSERPLUGINFOLDER."ckeditor.php"; ?>
+			</div>
+		</td>
+	</tr>
 	<!-- Permissions Checkboxes -->
 	<tr class="hide-div<?php echo $xml->USR; ?> user_sub_tr perm" style="">
 		<td colspan="4" height="16">
@@ -945,12 +978,9 @@ function mmManageUsersForm()
 		</div>
 
 		<div class="clear"></div>
-		<div style="padding-top:5px;padding-bottom:10px;">
-			<?php global $editor_id; $editor_id = (string) $xml->USR; ?>
-			<label><?php i18n('user-managment/USER_BIO'); ?></label>
-			<textarea name="users_bio" id="post-content<?php echo $editor_id; ?>"><?php echo $xml->USERSBIO; ?></textarea>
-			<?php include MULTIUSERPLUGINFOLDER."ckeditor.php"; ?>
-		</div>
+		<h3>Custom Permissions</h3>
+		<?php exec_mu_permissions($file); ?>
+		<div class="clear"></div>
 		</td>
 	</tr>
 	<!-- Submit Form -->
@@ -1060,7 +1090,7 @@ echo '<script type="text/javascript">';
                          </div>
 
                          <div class="perm_div"><label for="Support"><?php i18n('user-managment/SUPPORT'); ?></label>
-                         <input type="checkbox" id="Support" name="Support" value="no" />
+                         	<input type="checkbox" id="Support" name="Support" value="no" />
                          </div>
 
                          <div class="perm_div"><label for="Edit"><?php i18n('user-managment/EDIT'); ?></label>
@@ -1183,5 +1213,61 @@ elseif ($EDTOOL == 'basic')
 else 
 {
 	$TOOLBAR = GSEDITORTOOL;
+}
+
+
+
+function exec_mu_permissions($file_path) 
+{
+    global $permission_actions;
+    if(is_array($permission_actions) && !empty($permission_actions))
+    {
+    	$userData = getXML($file_path);
+	    foreach ($permission_actions as $permission) 
+	    {
+    		$permission_value = (string) $userData->PERMISSIONS->$permission['name'];
+	    	$checked = ($permission_value == 'no') ? 'checked' : '';
+	        echo   '<div class="custom_perm_div"><label for="'.$permission['name'].'">'.$permission['label'].'</label>
+	                    <input type="checkbox" id="'.$permission['name'].'" name="Custom-'.$permission['name'].'" value="no" '.$checked.' />
+	                </div>';
+	    }
+    }
+}
+
+function save_custom_permissions() 
+{
+	global $xml, $perm, $permission_actions;
+    if(is_array($permission_actions) && !empty($permission_actions))
+    {
+	    foreach ($permission_actions as $permission) 
+	    {
+	    	if(isset($_POST['Custom-'.$permission['name']]))
+	    	{
+				$perm->addChild($permission['name'], $_POST['Custom-'.$permission['name']]);
+	    	}
+		}
+	}
+}
+
+/**
+ * Add Action
+ *
+ * @param string $hook_name
+ * @param string $added_function
+ * @param array $args
+ * @param int sort The position of the action
+ */
+function add_mu_permission($name, $label) 
+{
+    global $permission_actions;
+    $permission_actions[] = array(
+        'name' => $name,
+        'label' => $label);
+}
+
+function check_user_permission($user, $permission)
+{
+	$mm_admin = new MultiUser;
+	return $mm_admin->getUserPermission($user, $permission);
 }
 ?>
