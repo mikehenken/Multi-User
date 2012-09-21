@@ -1,10 +1,10 @@
 <?php
 	/*
 	DISCLAIMER - When I initially created this plugin I had very little knowledge of php and was a programming noob. I know it is in need of a rewrite and I will get around to it at some point --
-	
+
 	Plugin Name: Multi User
 	Description: Adds Multi-User Management Section'
-	Version: 1.8.1
+	Version: 1.8.2
 	Author: Mike Henken
 	Author URI: http://michaelhenken.com/
 	*/
@@ -19,7 +19,7 @@
 	// register plugin
 	register_plugin($thisfile, // ID of plugin, should be filename minus php
 	'Multi User',
-	'1.8.1',
+	'1.8.2',
 	'Mike Henken', // Author of plugin
 	'http://www.michaelhenken.com/', // Author URL
 //	'Adds Multi-User Management - Edit all options for current users and manage permissions.', // Plugin Description
@@ -67,12 +67,18 @@ class MultiUser
 			if($data_Type == "")
 			{
 				$return_user_data = $user_file->PERMISSIONS->$get_Data;
-				return $return_user_data;
 			}
 			elseif($data_Type != "") 
 			{
 				$return_user_data = $user_file->$get_Data;
+			}
+			if(is_object($return_user_data))
+			{
 				return $return_user_data;
+			}
+			else
+			{
+				return '';
 			}
 		}
 	}
@@ -81,7 +87,7 @@ class MultiUser
 	{
 		if(get_cookie('GS_ADMIN_USERNAME') != "")
 		{
-			global $xml;
+			global $xml, $perm;
 			$userbio = $xml->addChild('USERSNAME', $_POST['users_name']);
 			$userbio = $xml->addChild('USERSBIO', $_POST['users_bio']);
 			$perm = $xml->addChild('PERMISSIONS');
@@ -95,6 +101,7 @@ class MultiUser
 			$perm->addChild('EDIT', $this->mmUserFile('EDIT'));
 			$perm->addChild('LANDING', $this->mmUserFile('LANDING'));
 			$perm->addChild('ADMIN', $this->mmUserFile('ADMIN')); 
+			save_custom_permissions(true);
 		}
 	}
 	
@@ -1256,22 +1263,34 @@ function exec_mu_permissions($file_path)
     }
 }
 
-function save_custom_permissions() 
+function save_custom_permissions($settings_page=false) 
 {
+	$mm_settings = new MultiUser;
 	global $xml, $perm, $permission_actions;
     if(is_array($permission_actions) && !empty($permission_actions))
     {
-	    foreach ($permission_actions as $permission) 
-	    {
-	    	if(isset($_POST['Custom-'.$permission['name']]))
-	    	{
-				$perm->addChild($permission['name'], $_POST['Custom-'.$permission['name']]);
-	    	}
-	    	else
-	    	{
-				$perm->addChild($permission['name'], '');
-	    	}
-		}
+    	if($settings_page == false)
+    	{
+		    foreach ($permission_actions as $permission) 
+		    {
+		    	if(isset($_POST['Custom-'.$permission['name']]))
+		    	{
+					$perm->addChild($permission['name'], $_POST['Custom-'.$permission['name']]);
+		    	}
+		    	else
+		    	{
+					$perm->addChild($permission['name'], '');
+		    	}
+			}
+    	}
+    	else
+    	{
+		    foreach ($permission_actions as $permission) 
+		    {
+		    	$perm_value = $mm_settings->mmUserFile($permission['name']);
+				$perm->addChild($permission['name'], $perm_value);
+			}
+    	}
 	}
 }
 
