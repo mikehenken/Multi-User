@@ -1,8 +1,10 @@
 <?php
 	/*
+	DISCLAIMER - When I initially created this plugin I had very little knowledge of php and was a programming noob. I know it is in need of a rewrite and I will get around to it at some point --
+	
 	Plugin Name: Multi User
 	Description: Adds Multi-User Management Section'
-	Version: 1.7
+	Version: 1.8.1
 	Author: Mike Henken
 	Author URI: http://michaelhenken.com/
 	*/
@@ -17,7 +19,7 @@
 	// register plugin
 	register_plugin($thisfile, // ID of plugin, should be filename minus php
 	'Multi User',
-	'1.8',
+	'1.8.1',
 	'Mike Henken', // Author of plugin
 	'http://www.michaelhenken.com/', // Author URL
 //	'Adds Multi-User Management - Edit all options for current users and manage permissions.', // Plugin Description
@@ -159,15 +161,22 @@ class MultiUser
 		mmManageUsersForm();
 	}
 
-	public function getUserPermission($user, $permission)
+	public function getUserPermission($user, $permission=null)
 	{
 		$userData = getXML(GSUSERSPATH.$user.'.xml');
-		if(is_object($userData->PERMISSIONS->$permission))
+		if(!is_null($permission))
 		{
-			$permission_value = (string) $userData->PERMISSIONS->$permission;
-			if($permission_value == 'no')
+			if(is_object($userData->PERMISSIONS->$permission))
 			{
-				return false;
+				$permission_value = (string) $userData->PERMISSIONS->$permission;
+				if($permission_value == 'no')
+				{
+					return false;
+				}
+				else
+				{
+					return true;
+				}
 			}
 			else
 			{
@@ -176,7 +185,20 @@ class MultiUser
 		}
 		else
 		{
-			return true;
+			foreach($userData->PERMISSIONS->children() as $permission_key => $permission_value)
+			{
+				$permission_key = (string) $permission_key;
+				$permission_value = (string) $permission_value;
+				if($permission_value == 'no')
+				{
+					$permissions[$permission_key] = false;
+				}
+				else
+				{
+					$permissions[$permission_key] = true;
+				}
+			}
+			return $permissions;
 		}
 	}
 	
@@ -1245,17 +1267,20 @@ function save_custom_permissions()
 	    	{
 				$perm->addChild($permission['name'], $_POST['Custom-'.$permission['name']]);
 	    	}
+	    	else
+	    	{
+				$perm->addChild($permission['name'], '');
+	    	}
 		}
 	}
 }
 
 /**
- * Add Action
+ * Add Custom Permission
+ * This can be used by other plugins to add custom permission the the user management section
  *
- * @param string $hook_name
- * @param string $added_function
- * @param array $args
- * @param int sort The position of the action
+ * @param string $name Name of node to save permission as in user xml file
+ * @param string $label The label that will be seen next to the permission on the "Edit User" page
  */
 function add_mu_permission($name, $label) 
 {
@@ -1265,9 +1290,28 @@ function add_mu_permission($name, $label)
         'label' => $label);
 }
 
+/**
+ * Check individual user permission
+ *
+ * @param string $user the username to get permission
+ * @param string $permission the permission to get - needs to be the name of the node in the user xml file
+ * @return bool whether user is allowed
+ */
 function check_user_permission($user, $permission)
 {
 	$mm_admin = new MultiUser;
 	return $mm_admin->getUserPermission($user, $permission);
+}
+
+/**
+ * Returns array of all user permissions
+ *
+ * @param string $user the username to get permissions 
+ * @param array the permissions
+ */
+function check_user_permissions($user)
+{
+	$mm_admin = new MultiUser;
+	return $mm_admin->getUserPermission($user);
 }
 ?>
