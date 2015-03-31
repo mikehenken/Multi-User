@@ -176,7 +176,7 @@ class MultiUser
 			if(is_object($userData->PERMISSIONS->$permission))
 			{
 				$permission_value = (string) $userData->PERMISSIONS->$permission;
-				if($permission_value == 'no')
+				if ($permission_value == 'no' || $permission_value == 'false')
 				{
 					return false;
 				}
