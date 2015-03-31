@@ -176,7 +176,7 @@ class MultiUser
 			if(is_object($userData->PERMISSIONS->$permission))
 			{
 				$permission_value = (string) $userData->PERMISSIONS->$permission;
-				if($permission_value == 'no')
+				if ($permission_value == 'no' || $permission_value == 'false')
 				{
 					return false;
 				}
@@ -211,7 +211,7 @@ class MultiUser
 	
 	public function mmProcessEditUser()
 	{
-		global $xml, $perm;
+		global $xml, $perm, $datau, $USR;
 		$NUSR = $_POST['usernamec'];
 		$usrfile = $_POST['usernamec'] . '.xml';
 		$NLANDING = (!isset($_POST['Landing']) || isset($_POST['Landing']) && $_POST['Landing'] == 'pages.php') ? '' : $_POST['Landing'];
@@ -230,7 +230,8 @@ class MultiUser
 		$support = (isset($_POST['Support'])) ? $_POST['Support'] : '';
 		$edit = (isset($_POST['Edit'])) ? $_POST['Edit'] : '';
 		$admin = (isset($_POST['Admin'])) ? $_POST['Admin'] : '';
-
+		
+		$datau = getXML(GSUSERSPATH . $USR . '.xml');
 		if (isset($_POST['usernamec'])) 
 		{
 			// Edit user xml file - This coding was mostly taken from the 'settings.php' page..
@@ -255,6 +256,7 @@ class MultiUser
 			$perm->addChild('EDIT', $edit);
 			$perm->addChild('LANDING', $NLANDING);
 			$perm->addChild('ADMIN', $admin);
+			exec_action('mu-save-user');
 			save_custom_permissions();
 			if (!XMLsave($xml, GSUSERSPATH . $usrfile)) 
 			{
